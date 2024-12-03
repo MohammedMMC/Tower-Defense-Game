@@ -11,7 +11,7 @@ class Enemy {
         this.radius = 50;
         this.health = 100;
         this.velocity = { x: 0, y: 0 };
-        this.speed = 13;
+        this.speed = 3;
     }
 
     draw() {
