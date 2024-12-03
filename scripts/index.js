@@ -1,3 +1,9 @@
+const endGameElement = document.getElementById("endGame");
+
+function showEndGame() {
+    endGameElement.style.height = "100%";
+}
+
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -18,6 +24,8 @@ const mouse = {
 };
 /** @type {PlacementTile} */
 let activeTile = undefined;
+let enemyCount = 3;
+let hearts = 10;
 
 /** @type {Building[]} */
 const buildings = [];
@@ -25,14 +33,18 @@ const buildings = [];
 /** @type {Enemy[]} */
 const enemies = [];
 
-for (let i = 1; i < 10; i++) {
-    const xOffset = i * 150;
-    enemies.push(
-        new Enemy({
-            position: { x: waypoints[0].x - xOffset, y: waypoints[0].y }
-        })
-    );
+function spawnEnemies(spawnCount) {
+    for (let i = 1; i < spawnCount + 1; i++) {
+        const xOffset = i * 150;
+        enemies.push(
+            new Enemy({
+                position: { x: waypoints[0].x - xOffset, y: waypoints[0].y }
+            })
+        );
+    }
 }
+
+spawnEnemies(enemyCount);
 
 /** @type {PlacementTile[]} */
 const placementTiles = [];
@@ -54,15 +66,36 @@ placementTiles2D.forEach((row, y) => {
 });
 
 function animate() {
-    requestAnimationFrame(animate);
-
+    const animationId = requestAnimationFrame(animate);
     ctx.drawImage(gameMapImage, 0, 0);
-    enemies.forEach(enemy => enemy.update());
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        enemy.update();
+
+        if (enemy.position.x > canvas.width) {
+            hearts--;
+            enemies.splice(i, 1);
+
+            if (hearts <= 0) {
+                showEndGame();
+                cancelAnimationFrame(animationId);
+            }
+        }
+    }
+
+    // Tracking total ammount of enemies
+    if (enemies.length === 0) {
+        enemyCount *= 2;
+        spawnEnemies(enemyCount);
+    }
+
     placementTiles.forEach(tile => tile.update(mouse));
+
     buildings.forEach(building => {
         building.update(mouse);
         building.target = null;
-        const validEnemies = enemies.filter(enemy=>{
+        const validEnemies = enemies.filter(enemy => {
             const xDifference = enemy.center.x - building.center.x;
             const yDifference = enemy.center.y - building.center.y;
             const distance = Math.hypot(yDifference, xDifference);
@@ -77,7 +110,15 @@ function animate() {
             const xDifference = projectile.enemy.center.x - projectile.position.x;
             const yDifference = projectile.enemy.center.y - projectile.position.y;
             const distance = Math.hypot(yDifference, xDifference);
+
+            // This is when a projectile hits an enemy
             if (distance < projectile.enemy.radius + projectile.radius) {
+                // Enemy health and enemy removal
+                projectile.enemy.health -= 20;
+                if (projectile.enemy.health <= 0) {
+                    const enemyIndex = enemies.findIndex((enemy) => projectile.enemy === enemy);
+                    if (enemyIndex > -1) enemies.splice(enemyIndex, 1);
+                }
                 building.projectiles.splice(i, 1);
             }
         }
